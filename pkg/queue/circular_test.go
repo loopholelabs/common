@@ -316,3 +316,36 @@ func TestCircular(t *testing.T) {
 		assert.Equal(t, 2, rb.Length())
 	})
 }
+
+func BenchmarkCircular(b *testing.B) {
+	const testSize = 65535 - 1
+
+	q := NewCircular[packet.Packet, *packet.Packet](65535)
+	packets := make([]*packet.Packet, testSize)
+	for i := 0; i < testSize; i++ {
+		packets[i] = packet.Get()
+		packets[i].Content.Write([]byte("hello world"))
+		packets[i].Metadata.Id = uint16(i)
+	}
+
+	b.ResetTimer()
+	var err error
+	var p *packet.Packet
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < testSize; j++ {
+			err = q.Push(packets[j])
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+		for j := 0; j < testSize; j++ {
+			p, err = q.Pop()
+			if err != nil {
+				b.Fatal(err)
+			}
+			if p.Metadata.Id != packets[j].Metadata.Id {
+				b.Fatal("wrong packet")
+			}
+		}
+	}
+}
