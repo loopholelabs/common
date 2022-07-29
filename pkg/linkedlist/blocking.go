@@ -179,6 +179,9 @@ LOOP:
 	l.tail = l.tail.prev
 	l.len--
 	val := node.Value()
+	if val == nil {
+		panic("node value is nil")
+	}
 	l.pool.Put(node)
 	l.lock.Unlock()
 
