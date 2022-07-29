@@ -114,6 +114,9 @@ func (l *Blocking[T, P]) PushBack(val P) (*Node[T, P], error) {
 func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 	node := l.pool.Get()
 	node.value = val
+	if val == nil {
+		panic("val is nil")
+	}
 	l.lock.Lock()
 	if l.isClosed() {
 		l.lock.Unlock()
@@ -179,9 +182,6 @@ LOOP:
 	l.tail = l.tail.prev
 	l.len--
 	val := node.Value()
-	if val == nil {
-		panic("node value is nil")
-	}
 	l.pool.Put(node)
 	l.lock.Unlock()
 
