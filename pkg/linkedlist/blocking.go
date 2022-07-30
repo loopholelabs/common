@@ -86,51 +86,29 @@ func (l *Blocking[T, P]) Length() (len uint64) {
 	return
 }
 
-// PushBack adds a new node to the end of the Blocking linked list
-func (l *Blocking[T, P]) PushBack(val P) (*Node[T, P], error) {
-	node := l.pool.Get()
-	node.value = val
-	l.lock.Lock()
-	if l.isClosed() {
-		l.lock.Unlock()
-		l.pool.Put(node)
-		return nil, Closed
-	}
-	node.prev = l.tail
-	if l.tail != nil {
-		l.tail.next = node
-	}
-	l.tail = node
-	if l.head == nil {
-		l.head = node
-	}
-	l.len++
-	l.notEmpty.Signal()
-	l.lock.Unlock()
-	return node, nil
-}
-
-// Push adds a new node at the beginning of the Blocking linked list
+// Push adds a new node at the end of the Blocking linked list
 func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 	node := l.pool.Get()
 	node.value = val
-	if val == nil {
-		panic("val is nil")
-	}
 	l.lock.Lock()
 	if l.isClosed() {
 		l.lock.Unlock()
 		l.pool.Put(node)
 		return nil, Closed
 	}
-	node.next = l.head
-	if l.head != nil {
-		l.head.prev = node
+
+	if l.head == nil {
+		l.head = node
 	}
-	l.head = node
+
 	if l.tail == nil {
 		l.tail = node
+	} else {
+		l.tail.next = node
+		node.prev = l.tail
+		l.tail = node
 	}
+
 	l.len++
 	l.notEmpty.Signal()
 	l.lock.Unlock()
@@ -166,30 +144,8 @@ func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
 	l.pool.Put(node)
 }
 
-// Pop removes and returns the node from the end of the Blocking linked list
+// Pop removes and returns the node from the start of the Blocking linked list
 func (l *Blocking[T, P]) Pop() (P, error) {
-	l.lock.Lock()
-LOOP:
-	if l.isClosed() {
-		l.lock.Unlock()
-		return nil, Closed
-	}
-	if l.len == 0 || l.tail == nil {
-		l.notEmpty.Wait()
-		goto LOOP
-	}
-	node := l.tail
-	l.tail = l.tail.prev
-	l.len--
-	val := node.Value()
-	l.pool.Put(node)
-	l.lock.Unlock()
-
-	return val, nil
-}
-
-// PopFront removes and returns the node from the front of the Blocking linked list
-func (l *Blocking[T, P]) PopFront() (P, error) {
 	l.lock.Lock()
 LOOP:
 	if l.isClosed() {
@@ -200,8 +156,12 @@ LOOP:
 		l.notEmpty.Wait()
 		goto LOOP
 	}
+
 	node := l.head
 	l.head = l.head.next
+	if l.head != nil {
+		l.head.prev = node.prev
+	}
 	l.len--
 	val := node.Value()
 	l.pool.Put(node)
@@ -217,10 +177,10 @@ LOOP:
 func (l *Blocking[T, P]) Drain() (out []P) {
 	l.lock.Lock()
 	out = []P{}
-	el := l.tail
+	el := l.head
 	for el != nil {
 		out = append(out, el.Value())
-		el = el.prev
+		el = el.next
 	}
 	l.lock.Unlock()
 	return

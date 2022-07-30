@@ -141,7 +141,7 @@ func TestBlockingInsert(t *testing.T) {
 			},
 		},
 		{
-			name: "Works with 1 insert backwards",
+			name: "Works with 1 insert",
 			before: func(dll *Blocking[StringP, *StringP]) {
 				_, err := dll.Push(NewStringP("One"))
 				assert.NoError(t, err)
@@ -153,23 +153,10 @@ func TestBlockingInsert(t *testing.T) {
 			},
 		},
 		{
-			name: "Works with 2 inserts backwards",
-			before: func(dll *Blocking[StringP, *StringP]) {
-				_, err := dll.PushBack(NewStringP("One"))
-				assert.NoError(t, err)
-				_, err = dll.PushBack(NewStringP("Two"))
-				assert.NoError(t, err)
-			},
-			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(2))
-				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("Two"), NewStringP("One")})
-			},
-		},
-		{
-			name: "Works with 100 inserts backwards",
+			name: "Works with 100 inserts",
 			before: func(dll *Blocking[StringP, *StringP]) {
 				for i := 0; i < 100; i++ {
-					_, err := dll.PushBack(NewStringP("Test"))
+					_, err := dll.Push(NewStringP(fmt.Sprintf("Test Backwards %d", i)))
 					assert.NoError(t, err)
 				}
 			},
@@ -178,31 +165,7 @@ func TestBlockingInsert(t *testing.T) {
 
 				var expected []*StringP
 				for i := 0; i < 100; i++ {
-					expected = append(expected, NewStringP("Test"))
-				}
-
-				assert.Equal(t, dll.Drain(), expected)
-			},
-		},
-		{
-			name: "Works with 100 inserts backwards and forwards",
-			before: func(dll *Blocking[StringP, *StringP]) {
-				for i := 0; i < 100; i++ {
-					_, err := dll.PushBack(NewStringP(fmt.Sprintf("Test Backwards %d", i)))
-					assert.NoError(t, err)
-					_, err = dll.Push(NewStringP(fmt.Sprintf("Test Forward %d", i)))
-					assert.NoError(t, err)
-				}
-			},
-			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(200))
-
-				var expected []*StringP
-				for i := 99; i > -1; i-- {
 					expected = append(expected, NewStringP(fmt.Sprintf("Test Backwards %d", i)))
-				}
-				for i := 0; i < 100; i++ {
-					expected = append(expected, NewStringP(fmt.Sprintf("Test Forward %d", i)))
 				}
 
 				assert.Equal(t, dll.Drain(), expected)
