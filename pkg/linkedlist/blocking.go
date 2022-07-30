@@ -140,8 +140,8 @@ func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
 	if decrement {
 		l.len--
 	}
-	l.lock.Unlock()
 	l.pool.Put(node)
+	l.lock.Unlock()
 }
 
 // Pop removes and returns the node from the start of the Blocking linked list
@@ -163,6 +163,11 @@ LOOP:
 		l.head.prev = node.prev
 	}
 	l.len--
+
+	if node == nil {
+		panic("asdf")
+	}
+
 	val := node.Value()
 	l.pool.Put(node)
 	l.lock.Unlock()
