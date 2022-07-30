@@ -96,19 +96,14 @@ func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 		l.pool.Put(node)
 		return nil, Closed
 	}
-
 	if l.head == nil {
 		l.head = node
-	}
-
-	if l.tail == nil {
-		l.tail = node
+		l.tail = l.head
 	} else {
 		l.tail.next = node
-		node.prev = l.tail
-		l.tail = node
+		l.tail.next.prev = l.tail
+		l.tail = l.tail.next
 	}
-
 	l.len++
 	l.notEmpty.Signal()
 	l.lock.Unlock()
@@ -117,35 +112,27 @@ func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 
 // Delete removes a node from the Blocking linked list
 func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
-	decrement := false
-	if node.deleted {
-		panic("node already deleted")
-	}
 	l.lock.Lock()
-	if node == l.head {
-		l.head = node.next
-		decrement = true
-	}
-	if node == l.tail {
-		l.tail = node.prev
-		decrement = true
-	}
-	if node.next != nil {
-		node.next.prev = node.prev
-		decrement = true
-	}
-	if node.prev != nil {
+	if l.head == l.tail {
+		l.head = nil
+		l.tail = nil
+	} else if node == l.head {
+		l.head = l.head.next
+		l.head.prev.next = nil
+		l.head.prev = nil
+	} else if node == l.tail {
+		l.tail = l.tail.prev
+		l.tail.next.prev = nil
+		l.tail.next = nil
+	} else {
 		node.prev.next = node.next
-		decrement = true
+		node.next.prev = node.prev
 	}
+	l.len--
 	node.next = nil
 	node.prev = nil
-	node.deleted = true
-	if decrement {
-		l.len--
-	}
-	l.pool.Put(node)
 	l.lock.Unlock()
+	l.pool.Put(node)
 }
 
 // Pop removes and returns the node from the start of the Blocking linked list
@@ -167,14 +154,9 @@ LOOP:
 		l.head.prev = node.prev
 	}
 	l.len--
-	if node.deleted {
-		panic("Asdf")
-	}
-	node.deleted = true
 	val := node.Value()
-	l.pool.Put(node)
 	l.lock.Unlock()
-
+	l.pool.Put(node)
 	return val, nil
 }
 
