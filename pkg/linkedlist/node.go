@@ -23,10 +23,12 @@ type Pointer[T any] interface {
 // Node is a container for data in the double linked list
 type Node[T any, P Pointer[T]] struct {
 	_padding0 [8]uint64 //nolint:structcheck,unused
-	prev      *Node[T, P]
+	deleted   bool
 	_padding1 [8]uint64 //nolint:structcheck,unused
-	next      *Node[T, P]
+	prev      *Node[T, P]
 	_padding2 [8]uint64 //nolint:structcheck,unused
+	next      *Node[T, P]
+	_padding3 [8]uint64 //nolint:structcheck,unused
 	value     P
 }
 
@@ -44,4 +46,5 @@ func (n *Node[T, P]) Reset() {
 	n.prev = nil
 	n.next = nil
 	n.value = nil
+	n.deleted = false
 }

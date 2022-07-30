@@ -118,6 +118,9 @@ func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 // Delete removes a node from the Blocking linked list
 func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
 	decrement := false
+	if node.deleted {
+		panic("node already deleted")
+	}
 	l.lock.Lock()
 	if node == l.head {
 		l.head = node.next
@@ -137,6 +140,7 @@ func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
 	}
 	node.next = nil
 	node.prev = nil
+	node.deleted = true
 	if decrement {
 		l.len--
 	}
@@ -163,11 +167,10 @@ LOOP:
 		l.head.prev = node.prev
 	}
 	l.len--
-
-	if node == nil {
-		panic("asdf")
+	if node.deleted {
+		panic("Asdf")
 	}
-
+	node.deleted = true
 	val := node.Value()
 	l.pool.Put(node)
 	l.lock.Unlock()
