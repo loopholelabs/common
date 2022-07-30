@@ -17,6 +17,7 @@
 package linkedlist
 
 import (
+	"container/list"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -26,7 +27,7 @@ import (
 func TestBlockingLen(t *testing.T) {
 	tests := []struct {
 		name   string
-		expect uint64
+		expect int
 		before func(*Blocking[StringP, *StringP])
 	}{
 		{
@@ -91,7 +92,7 @@ func TestBlockingInsert(t *testing.T) {
 			name:   "Works with no inserts",
 			before: func(dll *Blocking[StringP, *StringP]) {},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
@@ -102,7 +103,7 @@ func TestBlockingInsert(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.EqualValues(t, dll.Drain(), []*StringP{NewStringP("One")})
 			},
@@ -116,7 +117,7 @@ func TestBlockingInsert(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(2))
+				assert.Equal(t, dll.Length(), int(2))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One"), NewStringP("Two")})
 			},
@@ -130,7 +131,7 @@ func TestBlockingInsert(t *testing.T) {
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(100))
+				assert.Equal(t, dll.Length(), int(100))
 
 				var expected []*StringP
 				for i := 0; i < 100; i++ {
@@ -147,7 +148,7 @@ func TestBlockingInsert(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One")})
 			},
@@ -161,7 +162,7 @@ func TestBlockingInsert(t *testing.T) {
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(100))
+				assert.Equal(t, dll.Length(), int(100))
 
 				var expected []*StringP
 				for i := 0; i < 100; i++ {
@@ -184,71 +185,71 @@ func TestBlockingInsert(t *testing.T) {
 }
 
 func TestBlockingDelete(t *testing.T) {
-	newNode := func(dll *Blocking[StringP, *StringP], val string) *Node[StringP, *StringP] {
+	newNode := func(dll *Blocking[StringP, *StringP], val string) *list.Element {
 		n, err := dll.Push(NewStringP(val))
 		assert.NoError(t, err)
 		return n
 	}
 	tests := []struct {
 		name   string
-		before func(*Blocking[StringP, *StringP]) []*Node[StringP, *StringP]
-		apply  func(*Blocking[StringP, *StringP], []*Node[StringP, *StringP])
+		before func(*Blocking[StringP, *StringP]) []*list.Element
+		apply  func(*Blocking[StringP, *StringP], []*list.Element)
 		check  func(*Blocking[StringP, *StringP])
 	}{
 		{
 			name: "Works with no inserts",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				return []*Node[StringP, *StringP]{}
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				return []*list.Element{}
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Works with 1 insert",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"))
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Works with 2 inserts",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Works with 100 inserts",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				var nodes []*Node[StringP, *StringP]
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				var nodes []*list.Element
 
 				for i := 0; i < 100; i++ {
 					nodes = append(nodes, newNode(dll, "Test"))
@@ -256,110 +257,110 @@ func TestBlockingDelete(t *testing.T) {
 
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Can delete the head",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
 				n1 := newNode(dll, "One")
 				n2 := newNode(dll, "Two")
 
-				nodes := append([]*Node[StringP, *StringP]{}, n1, n2)
+				nodes := append([]*list.Element{}, n1, n2)
 
 				return nodes[0:1]
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("Two")})
 			},
 		},
 		{
 			name: "Can delete the tail",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
 				return nodes[1:]
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One")})
 			},
 		},
 		{
 			name: "Can delete the same node multiple times",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
-				return append([]*Node[StringP, *StringP]{nodes[1]}, nodes[1], nodes[1])
+				return append([]*list.Element{nodes[1]}, nodes[1], nodes[1])
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, int(1), dll.Length())
 
-				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One")})
+				assert.Equal(t, []*StringP{NewStringP("One")}, dll.Drain())
 			},
 		},
 		{
 			name: "Works with 1 insert backwards",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"))
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Works with 2 inserts backwards",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Works with 100 inserts backwards",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				var nodes []*Node[StringP, *StringP]
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				var nodes []*list.Element
 
 				for i := 0; i < 100; i++ {
 					nodes = append(nodes, newNode(dll, "Test"))
@@ -367,67 +368,67 @@ func TestBlockingDelete(t *testing.T) {
 
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
 		},
 		{
 			name: "Can delete the head backwards",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
 				return nodes[0:1]
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("Two")})
 			},
 		},
 		{
 			name: "Can delete the tail backwards",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
 				return nodes[1:]
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One")})
 			},
 		},
 		{
-			name: "Can delete the same node multiple times backwards",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			name: "Can delete the same node multiple times",
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
-				return append([]*Node[StringP, *StringP]{nodes[1]}, nodes[1], nodes[1])
+				return append([]*list.Element{nodes[1]}, nodes[1], nodes[1])
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, int(1), dll.Length())
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One")})
 			},
@@ -463,7 +464,7 @@ func TestBlockingPop(t *testing.T) {
 					assert.ErrorIs(t, err, Closed)
 					wg.Done()
 				}()
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 				dll.Close()
 				wg.Wait()
@@ -483,7 +484,7 @@ func TestBlockingPop(t *testing.T) {
 					assert.Equal(t, n, node)
 					wg.Done()
 				}()
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 				_, err := dll.Push(n)
 				assert.NoError(t, err)
@@ -507,7 +508,7 @@ func TestBlockingPop(t *testing.T) {
 					assert.Equal(t, n, node)
 					wg.Done()
 				}()
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 				_, err := dll.Push(n)
 				assert.NoError(t, err)
@@ -529,7 +530,7 @@ func TestBlockingPop(t *testing.T) {
 					assert.ErrorIs(t, err, Closed)
 					wg.Done()
 				}()
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 				assert.Equal(t, dll.Drain(), []*StringP{})
 				dll.Close()
 				wg.Wait()
@@ -543,7 +544,7 @@ func TestBlockingPop(t *testing.T) {
 			},
 			numPops: 1,
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
@@ -560,7 +561,7 @@ func TestBlockingPop(t *testing.T) {
 			},
 			numPops: 1,
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(2))
+				assert.Equal(t, dll.Length(), int(2))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("Two"), NewStringP("Three")})
 			},
@@ -577,7 +578,7 @@ func TestBlockingPop(t *testing.T) {
 			},
 			numPops: 3,
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(0))
+				assert.Equal(t, dll.Length(), int(0))
 
 				assert.Equal(t, dll.Drain(), []*StringP{})
 			},
@@ -600,25 +601,25 @@ func TestBlockingPop(t *testing.T) {
 }
 
 func TestBlockingBlockingIntegration(t *testing.T) {
-	newNode := func(dll *Blocking[StringP, *StringP], val string) *Node[StringP, *StringP] {
+	newNode := func(dll *Blocking[StringP, *StringP], val string) *list.Element {
 		n, err := dll.Push(NewStringP(val))
 		assert.NoError(t, err)
 		return n
 	}
 	tests := []struct {
 		name   string
-		before func(*Blocking[StringP, *StringP]) []*Node[StringP, *StringP]
-		apply  func(*Blocking[StringP, *StringP], []*Node[StringP, *StringP])
+		before func(*Blocking[StringP, *StringP]) []*list.Element
+		apply  func(*Blocking[StringP, *StringP], []*list.Element)
 		check  func(*Blocking[StringP, *StringP])
 	}{
 		{
 			name: "Can delete something at the end and then insert again",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
 				return nodes[1:]
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
@@ -627,19 +628,19 @@ func TestBlockingBlockingIntegration(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(2))
+				assert.Equal(t, dll.Length(), int(2))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("One"), NewStringP("New")})
 			},
 		},
 		{
 			name: "Can delete everything then insert again",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"))
 
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
@@ -648,19 +649,19 @@ func TestBlockingBlockingIntegration(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("New")})
 			},
 		},
 		{
 			name: "Can shift then insert",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"), newNode(dll, "Two"), newNode(dll, "Three"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"), newNode(dll, "Two"), newNode(dll, "Three"))
 
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				_, err := dll.Pop()
 				assert.NoError(t, err)
 				_, err = dll.Pop()
@@ -670,19 +671,19 @@ func TestBlockingBlockingIntegration(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(2))
+				assert.Equal(t, dll.Length(), int(2))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("Three"), NewStringP("New")})
 			},
 		},
 		{
 			name: "Can insert one, then delete, then insert",
-			before: func(dll *Blocking[StringP, *StringP]) []*Node[StringP, *StringP] {
-				nodes := append([]*Node[StringP, *StringP]{}, newNode(dll, "One"))
+			before: func(dll *Blocking[StringP, *StringP]) []*list.Element {
+				nodes := append([]*list.Element{}, newNode(dll, "One"))
 
 				return nodes
 			},
-			apply: func(dll *Blocking[StringP, *StringP], n []*Node[StringP, *StringP]) {
+			apply: func(dll *Blocking[StringP, *StringP], n []*list.Element) {
 				for _, node := range n {
 					dll.Delete(node)
 				}
@@ -691,7 +692,7 @@ func TestBlockingBlockingIntegration(t *testing.T) {
 				assert.NoError(t, err)
 			},
 			check: func(dll *Blocking[StringP, *StringP]) {
-				assert.Equal(t, dll.Length(), uint64(1))
+				assert.Equal(t, dll.Length(), int(1))
 
 				assert.Equal(t, dll.Drain(), []*StringP{NewStringP("New")})
 			},

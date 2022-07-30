@@ -17,7 +17,7 @@
 package linkedlist
 
 import (
-	"github.com/loopholelabs/common/pkg/pool"
+	"container/list"
 	"sync"
 )
 
@@ -28,17 +28,11 @@ type Blocking[T any, P Pointer[T]] struct {
 	_padding0 [8]uint64 //nolint:structcheck,unused
 	lock      *sync.Mutex
 	_padding1 [8]uint64 //nolint:structcheck,unused
-	head      *Node[T, P]
-	_padding2 [8]uint64 //nolint:structcheck,unused
-	tail      *Node[T, P]
-	_padding3 [8]uint64 //nolint:structcheck,unused
-	len       uint64
-	_padding4 [8]uint64 //nolint:structcheck,unused
-	closed    bool
-	_padding5 [8]uint64 //nolint:structcheck,unused
 	notEmpty  *sync.Cond
-	_padding6 [8]uint64 //nolint:structcheck,unused
-	pool      *pool.Pool[Node[T, P], *Node[T, P]]
+	_padding2 [8]uint64 //nolint:structcheck,unused
+	closed    bool
+	_padding3 [8]uint64 //nolint:structcheck,unused
+	list      *list.List
 }
 
 // NewBlocking creates a new Blocking double-linked list that can function as a
@@ -47,7 +41,7 @@ func NewBlocking[T any, P Pointer[T]]() *Blocking[T, P] {
 	l := new(Blocking[T, P])
 	l.lock = new(sync.Mutex)
 	l.notEmpty = sync.NewCond(l.lock)
-	l.pool = pool.NewPool[Node[T, P], *Node[T, P]](NewNode[T, P])
+	l.list = list.New()
 	return l
 }
 
@@ -79,60 +73,31 @@ func (l *Blocking[T, P]) Close() {
 }
 
 // Length returns the count of nodes stored in the Blocking linked list
-func (l *Blocking[T, P]) Length() (len uint64) {
+func (l *Blocking[T, P]) Length() (len int) {
 	l.lock.Lock()
-	len = l.len
+	len = l.list.Len()
 	l.lock.Unlock()
 	return
 }
 
 // Push adds a new node at the end of the Blocking linked list
-func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
-	node := l.pool.Get()
-	node.value = val
+func (l *Blocking[T, P]) Push(val P) (*list.Element, error) {
 	l.lock.Lock()
 	if l.isClosed() {
 		l.lock.Unlock()
-		l.pool.Put(node)
 		return nil, Closed
 	}
-	if l.head == nil {
-		l.head = node
-		l.tail = l.head
-	} else {
-		l.tail.next = node
-		l.tail.next.prev = l.tail
-		l.tail = l.tail.next
-	}
-	l.len++
+	element := l.list.PushBack(val)
 	l.notEmpty.Signal()
 	l.lock.Unlock()
-	return node, nil
+	return element, nil
 }
 
 // Delete removes a node from the Blocking linked list
-func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
+func (l *Blocking[T, P]) Delete(e *list.Element) {
 	l.lock.Lock()
-	if l.head == l.tail {
-		l.head = nil
-		l.tail = nil
-	} else if node == l.head {
-		l.head = l.head.next
-		l.head.prev.next = nil
-		l.head.prev = nil
-	} else if node == l.tail {
-		l.tail = l.tail.prev
-		l.tail.next.prev = nil
-		l.tail.next = nil
-	} else {
-		node.prev.next = node.next
-		node.next.prev = node.prev
-	}
-	l.len--
-	node.next = nil
-	node.prev = nil
+	l.list.Remove(e)
 	l.lock.Unlock()
-	l.pool.Put(node)
 }
 
 // Pop removes and returns the node from the start of the Blocking linked list
@@ -143,21 +108,14 @@ LOOP:
 		l.lock.Unlock()
 		return nil, Closed
 	}
-	if l.len == 0 || l.head == nil {
+	if l.list.Len() == 0 {
 		l.notEmpty.Wait()
 		goto LOOP
 	}
-
-	node := l.head
-	l.head = l.head.next
-	if l.head != nil {
-		l.head.prev = node.prev
-	}
-	l.len--
-	val := node.Value()
+	e := l.list.Front()
+	l.list.Remove(e)
 	l.lock.Unlock()
-	l.pool.Put(node)
-	return val, nil
+	return e.Value.(P), nil
 }
 
 // Drain removes all elements from the list.
@@ -167,10 +125,10 @@ LOOP:
 func (l *Blocking[T, P]) Drain() (out []P) {
 	l.lock.Lock()
 	out = []P{}
-	el := l.head
+	el := l.list.Front()
 	for el != nil {
-		out = append(out, el.Value())
-		el = el.next
+		out = append(out, el.Value.(P))
+		el = el.Next()
 	}
 	l.lock.Unlock()
 	return
