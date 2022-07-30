@@ -120,14 +120,14 @@ func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 		l.pool.Put(node)
 		return nil, Closed
 	}
+
 	node.next = l.head
 	if l.head != nil {
 		l.head.prev = node
-	}
-	l.head = node
-	if l.tail == nil {
+	} else {
 		l.tail = node
 	}
+	l.head = node
 	l.len++
 	l.notEmpty.Signal()
 	l.lock.Unlock()
@@ -137,6 +137,9 @@ func (l *Blocking[T, P]) Push(val P) (*Node[T, P], error) {
 // Delete removes a node from the Blocking linked list
 func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
 	decrement := false
+	if node.list == l {
+		return
+	}
 	l.lock.Lock()
 	if node == l.head {
 		l.head = node.next
@@ -159,8 +162,8 @@ func (l *Blocking[T, P]) Delete(node *Node[T, P]) {
 	if decrement {
 		l.len--
 	}
-	l.lock.Unlock()
 	l.pool.Put(node)
+	l.lock.Unlock()
 }
 
 // Pop removes and returns the node from the end of the Blocking linked list

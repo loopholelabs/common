@@ -27,6 +27,8 @@ type Node[T any, P Pointer[T]] struct {
 	_padding1 [8]uint64 //nolint:structcheck,unused
 	next      *Node[T, P]
 	_padding2 [8]uint64 //nolint:structcheck,unused
+	list      *Blocking[T, P]
+	_padding3 [8]uint64 //nolint:structcheck,unused
 	value     P
 }
 
@@ -44,4 +46,5 @@ func (n *Node[T, P]) Reset() {
 	n.prev = nil
 	n.next = nil
 	n.value = nil
+	n.list = nil
 }
